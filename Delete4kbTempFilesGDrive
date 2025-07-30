@@ -1,18 +1,42 @@
-function delete4KBFiles() {
-  const FOUR_KB = 4096; // 4KB in bytes
-  const files = DriveApp.getFiles();
+function monitorAndDeleteTempFiles() {
+  const folderId = 'YOUR_FOLDER_ID'; // Replace with your folder ID
+  const root = DriveApp.getFolderById(folderId);
+  const MAX_SIZE = 4096;
+
+  const store = PropertiesService.getScriptProperties();
+  const seen = JSON.parse(store.getProperty('seenFiles') || '{}');
+  let newSeen = {};
   let deletedCount = 0;
 
-  while (files.hasNext()) {
-    const file = files.next();
-    const size = file.getSize();
+  function scanFolder(folder) {
+    const files = folder.getFiles();
+    while (files.hasNext()) {
+      const file = files.next();
+      const id = file.getId();
+      const name = file.getName();
+      const size = file.getSize();
+      newSeen[id] = true;
 
-    if (size === FOUR_KB) {
-      Logger.log(`Deleting: ${file.getName()} | Size: ${size}`);
-      file.setTrashed(true); // Moves to trash
-      deletedCount++;
+      // Skip SVG files
+      if (name.toLowerCase().endsWith(".svg")) {
+        continue;
+      }
+
+      // Delete if (≤ 4KB OR starts with "._") AND NOT an SVG
+      if (!seen[id] && (size <= MAX_SIZE || name.startsWith("._"))) {
+        file.setTrashed(true);
+        Logger.log(`🗑 Deleted: ${name} (${id}) | Size: ${size} bytes`);
+        deletedCount++;
+      }
+    }
+
+    const subfolders = folder.getFolders();
+    while (subfolders.hasNext()) {
+      scanFolder(subfolders.next());
     }
   }
 
-  Logger.log(`✅ Deleted ${deletedCount} file(s) of exactly 4KB`);
+  scanFolder(root);
+  store.setProperty('seenFiles', JSON.stringify(newSeen));
+  Logger.log(`✅ Done. Deleted ${deletedCount} file(s).`);
 }
