@@ -1,0 +1,18 @@
+function delete4KBFiles() {
+  const FOUR_KB = 4096; // 4KB in bytes
+  const files = DriveApp.getFiles();
+  let deletedCount = 0;
+
+  while (files.hasNext()) {
+    const file = files.next();
+    const size = file.getSize();
+
+    if (size === FOUR_KB) {
+      Logger.log(`Deleting: ${file.getName()} | Size: ${size}`);
+      file.setTrashed(true); // Moves to trash
+      deletedCount++;
+    }
+  }
+
+  Logger.log(`✅ Deleted ${deletedCount} file(s) of exactly 4KB`);
+}
